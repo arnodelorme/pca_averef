@@ -32,7 +32,10 @@ pca_double2 = zeros(1, nParticipants*3);
 mir_single  = zeros(1, nParticipants*3);
 mir_double  = zeros(1, nParticipants*3);
 mir_double2  = zeros(1, nParticipants*3);
-parfor iSubjectRun = 1:nParticipants*3
+pmi_single  = zeros(1, nParticipants*3);
+pmi_double  = zeros(1, nParticipants*3);
+pmi_double2  = zeros(1, nParticipants*3);
+for iSubjectRun = 1:nParticipants*3
 
     iSubject = floor((iSubjectRun-1)/3)+1;
     iRun     = mod(iSubjectRun-1,3)+1;
@@ -49,6 +52,7 @@ parfor iSubjectRun = 1:nParticipants*3
     EEG = pop_loadset('filename',fileName);
     EEG = pop_eegfiltnew(EEG, 'locutoff',0.5);  
     EEG = pop_select( EEG, 'nochannel',removeChans); % list here channels to ignore
+    EEG = pop_select(EEG, 'time', [ 0 10 ]);
 
     % rereference
     EEG = pop_reref(EEG, []);
@@ -57,15 +61,20 @@ parfor iSubjectRun = 1:nParticipants*3
     pca_single2(iSubjectRun) = lowest_eig(single(EEG.data));
     pca_double2(iSubjectRun) = lowest_eig(double(EEG.data));
 
-    tmpdata = runpca(double(EEG.data), EEG.nbchan-1);
-    [W,S] = runica_single(single(tmpdata));
-    mir_single(iSubjectRun) = getmir(double(W*S), double(tmpdata));
+    [tmpdata,eigvec] = runpca(double(EEG.data), EEG.nbchan-1);
+    [W,S] = runica_single(single(tmpdata), 'maxsteps', 2000, 'extended', 1, 'lrate', 1e-5);
+    mir_single(iSubjectRun) = getMIR(W*S, double(tmpdata));
+    icaweights = double(W)*double(S)*pinv(eigvec);
+    pmi_single(iSubjectRun) = get_mi_mean(icaweights*double(EEG.data));
 
-    [W,S] = runica(double(tmpdata));
-    mir_double(iSubjectRun) = getmir(double(W*S), tmpdata);
+    [W,S] = runica(double(tmpdata), 'maxsteps', 2000, 'extended', 1, 'lrate', 1e-5);
+    mir_double(iSubjectRun) = getMIR(double(W*S), tmpdata);
+    icaweights = double(W)*double(S)*pinv(eigvec);
+    pmi_double(iSubjectRun) = get_mi_mean(double(W*S)*tmpdata);
 
-    [W,S] = runica(double(EEG.data(1:end-1,:)));
-    mir_double2(iSubjectRun) = getmir(double(W*S), double(EEG.data(1:end-1,:)));
+    [W,S] = runica(double(EEG.data(1:end-1,:)), 'maxsteps', 2000, 'extended', 1, 'lrate', 1e-5);
+    mir_double2(iSubjectRun) = getMIR(double(W*S), double(EEG.data(1:end-1,:)));
+    pmi_double2(iSubjectRun) = get_mi_mean(double(W*S)*double(EEG.data(1:end-1,:)));
 end
 
 printvar(pca_single1);
@@ -75,6 +84,9 @@ printvar(pca_double2);
 printvar(mir_single);
 printvar(mir_double);
 printvar(mir_double2);
-save('-mat', [ 'pca_' icaType '_' datestr(now, 30) '.mat'], 'pca_single1', 'pca_single2', 'pca_double1', 'pca_double2', 'mir_single', 'mir_double', 'mir_double2');
+printvar(pmi_single);
+printvar(pmi_double);
+printvar(pmi_double2);
+save('-mat', [ 'pca_' icaType '_' datestr(now, 30) '.mat'], 'pca_single1', 'pca_single2', 'pca_double1', 'pca_double2', 'mir_single', 'mir_double', 'mir_double2', 'pmi_single', 'pmi_double', 'pmi_double2');
 
 
