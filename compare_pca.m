@@ -5,11 +5,12 @@ clear
 bidsRepo = 'ds003061';
 bidsTask      = 'task-P300';
 bidsSess      = '';
-icaType  = 'picard';
-parallel = 10;
+icaType  = '';
+parallel = 39;
 
-if parallel > 1
+try
     parpool(parallel);
+catch
 end
 
 %% ---------------
@@ -56,17 +57,15 @@ parfor iSubjectRun = 1:nParticipants*3
     pca_single2(iSubjectRun) = lowest_eig(single(EEG.data));
     pca_double2(iSubjectRun) = lowest_eig(double(EEG.data));
 
-    if isequal(icaType, 'picard')
-        [W,S] = runica_single(single(EEG.data), 'pca', EEG.nbchan-1);
-        mir_single(iSubjectRun) = getmir(double(W*S), double(EEG.data));
+    tmpdata = runpca(double(EEG.data), EEG.nbchan-1);
+    [W,S] = runica_single(single(tmpdata));
+    mir_single(iSubjectRun) = getmir(double(W*S), double(tmpdata));
 
-        [W,S] = runica(double(EEG.data), 'pca', EEG.nbchan-1);
-        %[Y, W] = picard2(tmpdata, 'maxiter', 500, 'mode', 'standard', 'verbose', true);
-        mir_double(iSubjectRun) = getmir(double(W*S), double(EEG.data));
+    [W,S] = runica(double(tmpdata));
+    mir_double(iSubjectRun) = getmir(double(W*S), tmpdata);
 
-        [W,S] = runica(double(EEG.data(1:end-1,:)));
-        mir_double2(iSubjectRun) = getmir(double(W*S), double(EEG.data));
-    end
+    [W,S] = runica(double(EEG.data(1:end-1,:)));
+    mir_double2(iSubjectRun) = getmir(double(W*S), double(EEG.data(1:end-1,:)));
 end
 
 printvar(pca_single1);
@@ -79,18 +78,3 @@ printvar(mir_double2);
 save('-mat', [ 'pca_' icaType '_' datestr(now, 30) '.mat'], 'pca_single1', 'pca_single2', 'pca_double1', 'pca_double2', 'mir_single', 'mir_double', 'mir_double2');
 
 
-return
-
-figure; 
-hist2([pca_single], [pca_double]);
-legend({'single', 'double'})
-
-figure; 
-plot([pca_single], [pca_double], 'b.');
-[ypred, alpha, rsq, slope, intercept] = fastregress([pca_single], [pca_double], 1, 0);
-axis equal
-legend({'single', 'double'})
-
-fprintf('Mean and std single: %1.4f (%1.4f)\n', mean([pca_single]), std([pca_single]));
-fprintf('Mean and std double: %1.4f (%1.4f)\n', mean([pca_double]), std([pca_double]));
-fprintf('Sign test: %g\n', signtest([pca_single]-[pca_double]));
