@@ -3,36 +3,18 @@
 
 clear
 bidsRepo = 'ds003061';
+bidsTask      = 'task-P300';
+bidsSess      = '';
+icaType  = 'picard';
+parallel = 10;
+
+if parallel > 1
+    parpool(parallel);
+end
 
 %% ---------------
 %% End of settings
 %% ---------------
-
-if strcmpi(bidsRepo, 'ds002718')
-    bidsRepo      = 'ds002718';
-    bidsTask      = 'task-FaceRecognition';
-    bidsSess      = '';
-    bidsRun       = '';
-    conditions    = { 'famous_new' 'scrambled_new' }; % types 5 and 17
-    timeRanges = { [250 350] };
-elseif strcmpi(bidsRepo, 'ds002680')
-    bidsRepo      = 'ds002680';
-    bidsTask      = 'task-gonogo';
-    bidsSess      = 'ses-1';
-    bidsRun       = '';
-    conditions    = { 'animal_target_correct' 'animal_distractor_correct' };
-    timeRanges = { [350 450] };
-elseif strcmpi(bidsRepo, 'ds003061')
-    bidsRepo      = 'ds003061';
-    bidsTask      = 'task-P300';
-    bidsSess      = '';
-    bidsRun       = '2';
-    conditions    = { 'oddball_with_reponse' 'standard' };
-    timeRanges = { [400 500] };
-else
-    error('Unknown bids repo')
-end
-rng(now)
 
 % add necessary path (your path might be different
 if ~exist('eeg_checkset.m', 'file')
@@ -42,52 +24,62 @@ end
 
 participants = readtable(fullfile( bidsRepo, 'participants.tsv'), 'filetype', 'delimitedtext');
 nParticipants = size(participants,1);
-pca_single = cell(1, nParticipants);
-pca_double = cell(1, nParticipants);
-mir_single = cell(1, nParticipants);
-mir_double = cell(1, nParticipants);
-parfor iSubject = 1:nParticipants
+pca_single1 = zeros(1, nParticipants*3);
+pca_single2 = zeros(1, nParticipants*3);
+pca_double1 = zeros(1, nParticipants*3);
+pca_double2 = zeros(1, nParticipants*3);
+mir_single  = zeros(1, nParticipants*3);
+mir_double  = zeros(1, nParticipants*3);
+mir_double2  = zeros(1, nParticipants*3);
+parfor iSubjectRun = 1:nParticipants*3
+
+    iSubject = floor((iSubjectRun-1)/3)+1;
+    iRun     = mod(iSubjectRun-1,3)+1;
 
     subject = participants{iSubject,1}{1};
-    pca_single_tmp = zeros(1,3);
-    pca_double_tmp = zeros(1,3);
-    mir_single_tmp = zeros(1,3);
-    mir_double_tmp = zeros(1,3);
-    for iRun = 1:3
-        fileName = makebidsfile( '.', bidsRepo, subject, bidsSess, bidsTask, num2str(iRun));
-        fprintf('Processing file %s\n', fileName);
-        filePath = fileparts(fileName);
-    
-        EEG = pop_loadset(fileName);
-        removeChans = {'EXG1','EXG2','EXG3','EXG4','EXG5','EXG6','EXG7','EXG8','GSR1','GSR2','Erg1','Erg2','Resp','Plet','Temp','061','062','063','064'};
-        EEG = pop_loadset('filename',fileName);
-        EEG = pop_eegfiltnew(EEG, 'locutoff',0.5);  
-        EEG = pop_select( EEG, 'nochannel',removeChans); % list here channels to ignore
-    
-        EEG = pop_reref(EEG, []);
-        [pc,eigvec,sv1] = runpca(single(EEG.data));
-        [pc,eigvec,sv2] = runpca(double(EEG.data));
-        pca_single_tmp(iRun) = sv1(end,end);
-        pca_double_tmp(iRun) = sv2(end,end);
+    fileName = makebidsfile( '.', bidsRepo, subject, bidsSess, bidsTask, num2str(iRun));
+    fprintf('Processing file %s\n', fileName);
+    filePath = fileparts(fileName);
 
-        [Y, W] = picard(EEG.data, 'maxiter', 500, 'mode', 'standard', 'verbose', true);
-        mir_single_tmp(iRun) = getmir(double(W), double(EEG.data));
+    EEG = pop_loadset(fileName);
 
-        [Y, W] = picard(double(EEG.data), 'maxiter', 500, 'mode', 'standard', 'verbose', true);
-        mir_double_tmp(iRun) = getmir(double(W), double(EEG.data));
+    % preprocess data
+    removeChans = {'EXG1','EXG2','EXG3','EXG4','EXG5','EXG6','EXG7','EXG8','GSR1','GSR2','Erg1','Erg2','Resp','Plet','Temp','061','062','063','064'};
+    EEG = pop_loadset('filename',fileName);
+    EEG = pop_eegfiltnew(EEG, 'locutoff',0.5);  
+    EEG = pop_select( EEG, 'nochannel',removeChans); % list here channels to ignore
+
+    % rereference
+    EEG = pop_reref(EEG, []);
+    [pc,eigvec,sv1] = runpca(single(EEG.data)); pca_single1(iSubjectRun) = sv1(end,end);
+    [pc,eigvec,sv2] = runpca(double(EEG.data)); pca_double1(iSubjectRun) = sv2(end,end);
+    pca_single2(iSubjectRun) = lowest_eig(single(EEG.data));
+    pca_double2(iSubjectRun) = lowest_eig(double(EEG.data));
+
+    if isequal(icaType, 'picard')
+        [W,S] = runica_single(single(EEG.data), 'pca', EEG.nbchan-1);
+        mir_single(iSubjectRun) = getmir(double(W*S), double(EEG.data));
+
+        [W,S] = runica(double(EEG.data), 'pca', EEG.nbchan-1);
+        %[Y, W] = picard2(tmpdata, 'maxiter', 500, 'mode', 'standard', 'verbose', true);
+        mir_double(iSubjectRun) = getmir(double(W*S), double(EEG.data));
+
+        [W,S] = runica(double(EEG.data(1:end-1,:)));
+        mir_double2(iSubjectRun) = getmir(double(W*S), double(EEG.data));
     end
-    pca_single{iSubject}  = pca_single_tmp;
-    pca_double{iSubject}  = pca_double_tmp;
-    mir_single{iSubject}  = mir_single_tmp;
-    mir_double{iSubject}  = mir_double_tmp;
 end
 
-if iscell(pca_single)
-     pca_single = [ pca_single{:} ];
-     pca_double = [ pca_double{:} ];
-     mir_single = [ mir_single{:} ];
-     mir_double = [ mir_double{:} ];
-end
+printvar(pca_single1);
+printvar(pca_single2);
+printvar(pca_double1);
+printvar(pca_double2);
+printvar(mir_single);
+printvar(mir_double);
+printvar(mir_double2);
+save('-mat', [ 'pca_' icaType '_' datestr(now, 30) '.mat'], 'pca_single1', 'pca_single2', 'pca_double1', 'pca_double2', 'mir_single', 'mir_double', 'mir_double2');
+
+
+return
 
 figure; 
 hist2([pca_single], [pca_double]);
