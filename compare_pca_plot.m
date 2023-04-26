@@ -28,6 +28,12 @@ fprintf('Mean and std MIR double : %1.4f (%1.4f)\n', mean([mir_double]), std([mi
 fprintf('Mean and std MIR double2: %1.4f (%1.4f)\n', mean([mir_double2]), std([mir_double2]));
 
 
+fprintf('PMI\n');
+fprintf('Mean and std PMI single : %1.4f (%1.4f)\n', mean([pmi_single]), std([pmi_single]));
+fprintf('Mean and std PMI double : %1.4f (%1.4f)\n', mean([pmi_double]), std([pmi_double]));
+fprintf('Mean and std PMI double2: %1.4f (%1.4f)\n', mean([pmi_double2]), std([pmi_double2]));
+
+
 return
 
 
