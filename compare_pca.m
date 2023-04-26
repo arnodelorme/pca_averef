@@ -73,7 +73,7 @@ parfor iSubjectRun = 1:nParticipants*3
     icawinv = eigvec(:,1:end-1) * pinv(W * S);
     icawinv(:,end+1) = eigvec(:,end);
     icaweights = pinv(icawinv);
-    mir_single(iSubjectRun) = getMIR(icaweights, double(EEG.data));
+    mir_single(iSubjectRun) = getmir(icaweights, double(EEG.data));
     pmi_single(iSubjectRun) = get_mi_mean(icaweights(1:end-1,:)*double(EEG.data)); % between components
 
     % same as above double precision
@@ -82,7 +82,7 @@ parfor iSubjectRun = 1:nParticipants*3
     icawinv = eigvec(:,1:end-1) * pinv(W * S);
     icawinv(:,end+1) = eigvec(:,end);
     icaweights = pinv(icawinv);
-    mir_double(iSubjectRun) = getMIR(icaweights, double(EEG.data));
+    mir_double(iSubjectRun) = getmir(icaweights, double(EEG.data));
     pmi_double(iSubjectRun) = get_mi_mean(icaweights(1:end-1,:)*double(EEG.data));
 
     % run ICA double precision on EEG.data dim -1 
@@ -90,7 +90,7 @@ parfor iSubjectRun = 1:nParticipants*3
     [W,S] = runica(double(tmpdata), options{:});
     icawinv = eigvec * pinv(W * S);
     icaweights = pinv(icawinv);
-    mir_double2(iSubjectRun) = getMIR(icaweights, double(EEG.data(1:end-1,:)));
+    mir_double2(iSubjectRun) = getmir(icaweights, double(EEG.data(1:end-1,:)));
     pmi_double2(iSubjectRun) = get_mi_mean(icaweights*double(EEG.data(1:end-1,:)));
 end
 
