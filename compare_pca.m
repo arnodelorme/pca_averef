@@ -35,7 +35,7 @@ mir_double2  = zeros(1, nParticipants*3);
 pmi_single  = zeros(1, nParticipants*3);
 pmi_double  = zeros(1, nParticipants*3);
 pmi_double2  = zeros(1, nParticipants*3);
-for iSubjectRun = 1:nParticipants*3
+parfor iSubjectRun = 1:nParticipants*3
 
     iSubject = floor((iSubjectRun-1)/3)+1;
     iRun     = mod(iSubjectRun-1,3)+1;
@@ -52,7 +52,6 @@ for iSubjectRun = 1:nParticipants*3
     EEG = pop_loadset('filename',fileName);
     EEG = pop_eegfiltnew(EEG, 'locutoff',0.5);  
     EEG = pop_select( EEG, 'nochannel',removeChans); % list here channels to ignore
-    EEG = pop_select(EEG, 'time', [ 0 10 ]);
 
     % rereference
     EEG = pop_reref(EEG, []);
@@ -61,20 +60,24 @@ for iSubjectRun = 1:nParticipants*3
     pca_single2(iSubjectRun) = lowest_eig(single(EEG.data));
     pca_double2(iSubjectRun) = lowest_eig(double(EEG.data));
 
+    options = { 'maxsteps', 2000, 'extended', 1, 'lrate', 1e-5 };
+    %options = { 'extended', 1 };
     [tmpdata,eigvec] = runpca(double(EEG.data), EEG.nbchan-1);
-    [W,S] = runica_single(single(tmpdata), 'maxsteps', 2000, 'extended', 1, 'lrate', 1e-5);
-    mir_single(iSubjectRun) = getMIR(W*S, double(tmpdata));
+    [W,S] = runica_single(single(tmpdata), options{:});
+    mir_single(iSubjectRun) = getmir(W*S, double(tmpdata));
     icaweights = double(W)*double(S)*pinv(eigvec);
     pmi_single(iSubjectRun) = get_mi_mean(icaweights*double(EEG.data));
 
-    [W,S] = runica(double(tmpdata), 'maxsteps', 2000, 'extended', 1, 'lrate', 1e-5);
-    mir_double(iSubjectRun) = getMIR(double(W*S), tmpdata);
+    [W,S] = runica(double(tmpdata), options{:});
+    mir_double(iSubjectRun) = getmir(double(W*S), tmpdata);
     icaweights = double(W)*double(S)*pinv(eigvec);
     pmi_double(iSubjectRun) = get_mi_mean(double(W*S)*tmpdata);
 
-    [W,S] = runica(double(EEG.data(1:end-1,:)), 'maxsteps', 2000, 'extended', 1, 'lrate', 1e-5);
-    mir_double2(iSubjectRun) = getMIR(double(W*S), double(EEG.data(1:end-1,:)));
-    pmi_double2(iSubjectRun) = get_mi_mean(double(W*S)*double(EEG.data(1:end-1,:)));
+    [tmpdata,eigvec] = runpca(double(EEG.data(1:end-1,:)));
+    [W,S] = runica(double(tmpdata), options{:});
+    mir_double(iSubjectRun) = getmir(double(W*S), tmpdata);
+    icaweights = double(W)*double(S)*pinv(eigvec);
+    pmi_double2(iSubjectRun) = get_mi_mean(double(W*S)*tmpdata);
 end
 
 printvar(pca_single1);
