@@ -71,19 +71,21 @@ parfor iSubjectRun = 1:nParticipants*3
     [tmpdata,eigvec] = runpca(double(EEG.data));
     [W,S] = runica_single(single(tmpdata(1:end-1,:)), options{:});
     icawinv = eigvec(:,1:end-1) * pinv(W * S);
-    icawinv(:,end+1) = eigvec(:,end);
+    %icawinv(:,end+1) = eigvec(:,end);
     icaweights = pinv(icawinv);
-    mir_single(iSubjectRun) = getmir(icaweights, double(EEG.data));
-    pmi_single(iSubjectRun) = get_mi_mean(icaweights(1:end-1,:)*double(EEG.data)); % between components
+    icaweights(:,end) = [];
+    mir_single(iSubjectRun) = getmir(icaweights, double(EEG.data(1:end-1,:)));
+    pmi_single(iSubjectRun) = get_mi_mean(icaweights*double(EEG.data(1:end-1,:)));
 
     % same as above double precision
     [tmpdata,eigvec] = runpca(double(EEG.data));
     [W,S] = runica(single(tmpdata(1:end-1,:)), options{:});
     icawinv = eigvec(:,1:end-1) * pinv(W * S);
-    icawinv(:,end+1) = eigvec(:,end);
+    %icawinv(:,end+1) = eigvec(:,end);
     icaweights = pinv(icawinv);
-    mir_double(iSubjectRun) = getmir(icaweights, double(EEG.data));
-    pmi_double(iSubjectRun) = get_mi_mean(icaweights(1:end-1,:)*double(EEG.data));
+    icaweights(:,end) = [];
+    mir_double(iSubjectRun) = getmir(icaweights, double(EEG.data(1:end-1,:)));
+    pmi_double(iSubjectRun) = get_mi_mean(icaweights*double(EEG.data(1:end-1,:)));
 
     % run ICA double precision on EEG.data dim -1 
     [tmpdata,eigvec] = runpca(double(EEG.data(1:end-1,:))); % PCA for symmetry with other approaches
@@ -92,6 +94,13 @@ parfor iSubjectRun = 1:nParticipants*3
     icaweights = pinv(icawinv);
     mir_double2(iSubjectRun) = getmir(icaweights, double(EEG.data(1:end-1,:)));
     pmi_double2(iSubjectRun) = get_mi_mean(icaweights*double(EEG.data(1:end-1,:)));
+
+    % run ICA double precision on EEG.data dim -1 
+    [W,S] = runica(double(EEG.data(1:end-1,:)), options{:});
+    icawinv = pinv(W * S);
+    icaweights = pinv(icawinv);
+    mir_double3(iSubjectRun) = getmir(icaweights, double(EEG.data(1:end-1,:)));
+    pmi_double3(iSubjectRun) = get_mi_mean(icaweights*double(EEG.data(1:end-1,:)));
 end
 
 printvar(pca_single1);
@@ -101,9 +110,11 @@ printvar(pca_double2);
 printvar(mir_single);
 printvar(mir_double);
 printvar(mir_double2);
+printvar(mir_double3);
 printvar(pmi_single);
 printvar(pmi_double);
 printvar(pmi_double2);
-save('-mat', [ 'pca_' icaType '_' datestr(now, 30) '.mat'], 'pca_single1', 'pca_single2', 'pca_double1', 'pca_double2', 'mir_single', 'mir_double', 'mir_double2', 'pmi_single', 'pmi_double', 'pmi_double2');
+printvar(pmi_double3);
+save('-mat', [ 'pca_' icaType '_' datestr(now, 30) '.mat'], 'pca_single1', 'pca_single2', 'pca_double1', 'pca_double2', 'mir_single', 'mir_double', 'mir_double2', 'mir_double3', 'pmi_single', 'pmi_double', 'pmi_double2', 'pmi_double3');
 
 
