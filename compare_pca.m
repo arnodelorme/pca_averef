@@ -70,10 +70,11 @@ parfor iSubjectRun = 1:nParticipants*3
     % then reconstruct the full data
     [tmpdata,eigvec] = runpca(double(EEG.data));
     [W,S] = runica_single(single(tmpdata(1:end-1,:)), options{:});
-    icawinv = eigvec(:,1:end-1) * pinv(W * S);
+    icawinv = eigvec(:,1:end-1) * pinv(W * S); % Jason: W = W*S; icaweights = [icaweights;eigvec(:,end)']; icawinv = pinv(icaweights);
+                                               % Jason: convergence, PCA further away from solution so need more steps, check convergence
     %icawinv(:,end+1) = eigvec(:,end);
     icaweights = pinv(icawinv);
-    icaweights(:,end) = [];
+    icaweights(:,end) = []; % cannot remove channel
     mir_single(iSubjectRun) = getmir(icaweights, double(EEG.data(1:end-1,:)));
     pmi_single(iSubjectRun) = get_mi_mean(icaweights*double(EEG.data(1:end-1,:)));
 
