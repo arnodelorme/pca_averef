@@ -29,14 +29,15 @@ pca_single1 = zeros(1, nParticipants*3);
 pca_single2 = zeros(1, nParticipants*3);
 pca_double1 = zeros(1, nParticipants*3);
 pca_double2 = zeros(1, nParticipants*3);
+pca_tol     = zeros(1, nParticipants*3);
 mir_single  = zeros(1, nParticipants*3);
 mir_double  = zeros(1, nParticipants*3);
 mir_double2  = zeros(1, nParticipants*3);
 pmi_single  = zeros(1, nParticipants*3);
 pmi_double  = zeros(1, nParticipants*3);
 pmi_double2  = zeros(1, nParticipants*3);
-parfor iSubjectRun = 1:nParticipants*3
-%for iSubjectRun = 1
+%parfor iSubjectRun = 1:nParticipants*3
+for iSubjectRun = 1:nParticipants*3
 
     iSubject = floor((iSubjectRun-1)/3)+1;
     iRun     = mod(iSubjectRun-1,3)+1;
@@ -62,6 +63,26 @@ parfor iSubjectRun = 1:nParticipants*3
     pca_double1(iSubjectRun) = sv2(end,end);
     pca_single2(iSubjectRun) = lowest_eig(single(EEG.data));
     pca_double2(iSubjectRun) = lowest_eig(double(EEG.data));
+    s = svd(EEG.data(:,:));
+    pca_tol(iSubjectRun) = max(size(EEG.data(:,:))) * eps(norm(s,inf))
+
+end
+
+pca_single1 = abs(pca_single1);
+pca_single2 = abs(pca_single2);
+pca_double1 = abs(pca_double1);
+pca_double2 = abs(pca_double2);
+
+fprintf('Mean and std single: %1.4f (%1.4f)\n', mean([pca_single1]), std([pca_single1]));
+fprintf('Mean and std double: %1.4f (%1.4f)\n', mean([pca_double1]), std([pca_double1]));
+fprintf('Sign test: %g\n', signtest([pca_single1]-[pca_double1]));
+
+fprintf('Mean and std single: %1.10f (%1.10f)\n', mean([pca_single2]), std([pca_single2]));
+fprintf('Mean and std double: %1.10f (%1.10f)\n', mean([pca_double2]), std([pca_double2]));
+fprintf('Sign test: %g\n', signtest([pca_single2]-[pca_double2]));
+
+
+return
 
     options = { 'maxsteps', 10, 'extended', 1, 'lrate', 1e-5 };
     %options = { 'extended', 1 };
@@ -101,7 +122,6 @@ parfor iSubjectRun = 1:nParticipants*3
     icaweights = pinv(icawinv);
     mir_double3(iSubjectRun) = getmir(icaweights, double(EEG.data(1:end-1,:)));
     pmi_double3(iSubjectRun) = get_mi_mean(icaweights*double(EEG.data(1:end-1,:)));
-end
 
 printvar(pca_single1);
 printvar(pca_single2);

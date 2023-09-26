@@ -7,7 +7,7 @@
 #SBATCH --cpus-per-task=40
 #SBATCH --mem=240Gb
 #SBATCH --export=ALL
-#SBATCH -t 32:00:00
+#SBATCH -t 48:00:00
 #SBATCH --mail-user=adelorme@ucsd.edu
 #SBATCH --mail-type=begin
 #SBATCH --mail-type=end
